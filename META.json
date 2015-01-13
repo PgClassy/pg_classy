@@ -1,0 +1,29 @@
+{
+    "name": "pg_classy",
+    "abstract": "Object-oriented classes for PostgreSQL",
+    "description": "A framework for creating object-oriented style classes within Postgres"
+    "version": "0.0.1",
+    "maintainer": "Jim C. Nasby <Jim.Nasby@BlueTreble.com>",
+    "license": ""BSD 2 Clause": "http://opensource.org/licenses/bsd-license.php"",
+    "provides": {
+        "pg_classy": {
+            "abstract": "Object-oriented classes for PostgreSQL",
+            "file": "sql/pg_classy.sql",
+            "docfile": "doc/pg_classy.md",
+            "version": "0.0.1"
+        }
+    },
+    "release_status": "unstable",
+
+    "generated_by": "Jim C. Nasby <Jim.Nasby@BlueTreble.com>",
+
+
+    "tags": [ "class","classes","inheritance","object oriented","object-oriented","meta programming" ],
+
+    "meta-spec": {
+        "version": "1.0.0",
+        "url": "http://pgxn.org/meta/spec.txt"
+    },
+
+    "X_vi": "vi: expandtab ts=4 sw=4"
+}
