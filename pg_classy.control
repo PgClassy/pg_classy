@@ -1,4 +1,5 @@
 # pg_classy extension
 comment = 'Object-oriented classes for PostgreSQL'
 default_version = '0.0.1'
-relocatable = true
+relocatable = false
+schema = 'pg_classy'
