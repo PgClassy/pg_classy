@@ -22,14 +22,19 @@ CREATE TABLE _pg_classy._class(
   class_id        serial  PRIMARY KEY
   , class_name      text  NOT NULL
   , class_version     int   NOT NULL -- Same as _trunklet.template.template_version
+  , CONSTRAINT _class__u_class_name__class_version UNIQUE( class_name, class_version )
+
   , unique_parameters   variant(trunklet_parameter) NOT NULL
 
   -- Denormalized from _trunklet.template.template_name
-  , preprocess_template_name  text
-  , creation_template_name  text
-  , test_template_name    text
-  , CONSTRAINT _class__u_class_name__class_version UNIQUE( class_name, class_version )
+  -- References to trunklet templates
+  , creation_template_id  int NOT NULL
+  , preprocess_template_id  int
+  , test_template_id    int
 );
+SELECT trunklet.template__dependency__add( '_pg_class._class', 'creation_template_id' );
+SELECT trunklet.template__dependency__add( '_pg_class._class', 'preprocess_template_id' );
+SELECT trunklet.template__dependency__add( '_pg_class._class', 'test_template_id' );
 
 -- TTODO: PK, UNIQUE
 -- TTODO: types match _trunklet.template fields
@@ -117,7 +122,7 @@ END IF;
  * We may need to pre-process our parameters.
  */
 
-IF r_class.preprocess_template_name IS NOT NULL THEN
+IF r_class.preprocess_template_id IS NOT NULL THEN
   RAISE 'preprocessing not currently supported';
   /*
   v_paramaters := trunklet.execute_into(
@@ -129,8 +134,7 @@ IF r_class.preprocess_template_name IS NOT NULL THEN
 END IF;
 
 PERFORM execute(
-  r_class.creation_template_name
-  , class_version
+  r_class.creation_template_id
   , v_parameters
 );
 
