@@ -58,21 +58,23 @@ $body$;
 -- TTODO: error for no record
 -- TTODO: properly handle missing class_version
 
-CREATE TABLE _pg_classy.instantiated(
+CREATE TABLE _pg_classy.instance(
   instance_id           serial    PRIMARY KEY
   , class_id            int       NOT NULL REFERENCES _pg_classy.class
   -- Uhoh... variant currently doesn't support indexes
   , unique_parameters   variant(trunklet_parameters)  NOT NULL UNIQUE
 );
 
-CREATE OR REPLACE FUNCTION _pg_classy.instantiated__get_loose(
+CREATE OR REPLACE FUNCTION _pg_classy.instance__get_loose(
   class_id    int
   , unique_parameters variant(trunklet_parameters)
-) RETURNS _pg_classy.instantiated LANGUAGE sql AS $body$
+) RETURNS _pg_classy.instance LANGUAGE sql AS $body$
   SELECT *
-    FROM _pg_classy.instantiated i
+    FROM _pg_classy.instance i
     WHERE i.class_id = class_id
       AND i.unique_parameters = unique_parameters
+      -- For index
+      AND i.unique_parameters::text = unique_parameters::text
 $body$;
 
 CREATE OR REPLACE FUNCTION pg_classy.instantiate(
@@ -82,7 +84,7 @@ CREATE OR REPLACE FUNCTION pg_classy.instantiate(
 ) RETURNS void LANGUAGE plpgsql AS $body$
 DECLARE
   r_class _pg_classy.class;
-  r_instantiated record;
+  r_instance record;
   v_parameters variant := paramaters;
   v_unique_parameters variant;
 BEGIN
@@ -96,14 +98,14 @@ r_class := _pg_classy.class__get(class_name, class_version);
 v_unique_parameters := extract_parameters(r_class.unique_parameters, parameters);
 
 /*
- * See if we're already instantiated. We don't bother with race condition
+ * See if we're already instance. We don't bother with race condition
  * because our insert at the bottom will eventually fail if nothing else.
  */
-r_instantiated := _pg_classy.instantiated__get( r_class.class_id, v_unique_paramaters );
+r_instance := _pg_classy.instance__get( r_class.class_id, v_unique_paramaters );
 IF true or FOUND THEN
   BEGIN
     RAISE 'test %', '(1,1)'::point::int; -- Test error handling
-    RAISE 'class % already instantiated', class_name
+    RAISE 'class % already instance', class_name
       , USING DETAIL = 'with parameters ' || v_unique_parameters::text
     ;
   EXCEPTION
@@ -135,7 +137,7 @@ PERFORM execute(
     ;
   EXCEPTION
     WHEN unique_violation THEN
-      RAISE EXCEPTION 'class % identified by % already instantiated',
+      RAISE EXCEPTION 'class % identified by % already instance',
         class_name, v_unique_paramaters
       ;
   END;
