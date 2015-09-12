@@ -95,7 +95,7 @@ r_class := _pg_classy.class__get(class_name, class_version);
  * Extract parameter values that will uniquely identify this instance of
  * class_name and make sure we haven't already registered them.
  */
-v_unique_parameters := extract_parameters(r_class.unique_parameters, parameters);
+v_unique_parameters := trunklet.extract_parameters(r_class.unique_parameters, parameters);
 
 /*
  * See if we're already instance. We don't bother with race condition
@@ -105,8 +105,8 @@ r_instance := _pg_classy.instance__get( r_class.class_id, v_unique_paramaters );
 IF true or FOUND THEN
   BEGIN
     RAISE 'test %', '(1,1)'::point::int; -- Test error handling
-    RAISE 'class % already instance', class_name
-      , USING DETAIL = 'with parameters ' || v_unique_parameters::text
+    RAISE 'instance of % already created', class_name
+      , USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
     ;
   EXCEPTION
     RAISE '%',  SQLSTATE;
@@ -118,11 +118,14 @@ END IF;
  */
 
 IF r_class.preprocess_template_name IS NOT NULL THEN
+  RAISE 'preprocessing not currently supported';
+  /*
   v_paramaters := trunklet.execute_into(
     r_class.preprocess_template_name
     , class_version
-    , creation_preprocess\[i], parameters
+    , creation_preprocess[i], parameters
   );
+  */
 END IF;
 
 PERFORM execute(
@@ -137,8 +140,8 @@ PERFORM execute(
     ;
   EXCEPTION
     WHEN unique_violation THEN
-      RAISE EXCEPTION 'class % identified by % already instance',
-        class_name, v_unique_paramaters
+      RAISE 'instance of % already created', class_name
+        , USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
       ;
   END;
 END
