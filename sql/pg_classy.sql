@@ -8,13 +8,13 @@ CREATE SCHEMA _pg_classy;
 
 CREATE TYPE _pg_classy.class AS (
   class_id        int
-  , class_name      text
-  , class_version     int -- Same as _trunklet.template.template_version
 
   -- Denormalized from _trunklet.template.template_name
   , preprocess_template_name  text
   , creation_template_name  text
   , test_template_name    text
+  , class_name      text NOT NULL
+  , class_version     int NOT NULL -- Same as _trunklet.template.template_version
   , unique_parameters_extract_list   text[] NOT NULL
 );
 
