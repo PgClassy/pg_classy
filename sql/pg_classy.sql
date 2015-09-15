@@ -8,14 +8,16 @@ CREATE SCHEMA _pg_classy;
 
 CREATE TYPE _pg_classy.class AS (
   class_id        int
-
-  -- Denormalized from _trunklet.template.template_name
-  , preprocess_template_name  text
-  , creation_template_name  text
-  , test_template_name    text
   , class_name      text NOT NULL
   , class_version     int NOT NULL -- Same as _trunklet.template.template_version
+    CONSTRAINT class_version_must_be_greater_than_0 CHECK( class_version > 0 )
   , unique_parameters_extract_list   text[] NOT NULL
+
+  -- References to trunklet templates
+  , creation_template_id  int NOT NULL
+  , upgrade_template_id   int
+    CONSTRAINT upgrade_template_required_after_version_1 CHECK( class_version = 1 OR upgrade_template_id IS NOT NULL )
+  , preprocess_template_id  int
 );
 
 CREATE TABLE _pg_classy._class(
