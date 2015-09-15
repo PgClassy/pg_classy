@@ -26,15 +26,17 @@ CREATE TABLE _pg_classy._class(
 
   , unique_parameters_extract_list   text[] NOT NULL
 
-  -- Denormalized from _trunklet.template.template_name
   -- References to trunklet templates
   , creation_template_id  int NOT NULL
+  , upgrade_template_id   int
+    CONSTRAINT upgrade_template_required_after_version_1 CHECK( class_version = 1 OR upgrade_template_id IS NOT NULL )
   , preprocess_template_id  int
-  , test_template_id    int
+
+  -- All other templates will be optional and added as a separate table
 );
 SELECT trunklet.template__dependency__add( '_pg_class._class', 'creation_template_id' );
+SELECT trunklet.template__dependency__add( '_pg_class._class', 'upgrade_template_id' );
 SELECT trunklet.template__dependency__add( '_pg_class._class', 'preprocess_template_id' );
-SELECT trunklet.template__dependency__add( '_pg_class._class', 'test_template_id' );
 
 -- TTODO: PK, UNIQUE
 -- TTODO: types match _trunklet.template fields
