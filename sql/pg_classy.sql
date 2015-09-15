@@ -66,7 +66,7 @@ $body$;
 CREATE TABLE _pg_classy.instance(
   instance_id           serial    PRIMARY KEY
   , class_id            int       NOT NULL REFERENCES _pg_classy.class
-  , unique_parameters   variant(trunklet_parameters)  NOT NULL
+  , unique_parameters   variant.variant(trunklet_parameters)  NOT NULL
   , CONSTRAINT instance__u_class_id__unique_parameters_text UNIQUE( class_id, unique_parameters::text )
 );
 
