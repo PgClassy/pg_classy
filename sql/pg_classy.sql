@@ -10,12 +10,12 @@ CREATE TYPE _pg_classy.class AS (
   class_id        int
   , class_name      text
   , class_version     int -- Same as _trunklet.template.template_version
-  , unique_parameters   variant(trunklet_parameter)
 
   -- Denormalized from _trunklet.template.template_name
   , preprocess_template_name  text
   , creation_template_name  text
   , test_template_name    text
+  , unique_parameters_extract_list   text[] NOT NULL
 );
 
 CREATE TABLE _pg_classy._class(
@@ -24,7 +24,7 @@ CREATE TABLE _pg_classy._class(
   , class_version     int   NOT NULL -- Same as _trunklet.template.template_version
   , CONSTRAINT _class__u_class_name__class_version UNIQUE( class_name, class_version )
 
-  , unique_parameters   variant(trunklet_parameter) NOT NULL
+  , unique_parameters_extract_list   text[] NOT NULL
 
   -- Denormalized from _trunklet.template.template_name
   -- References to trunklet templates
