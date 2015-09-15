@@ -22,6 +22,7 @@ CREATE TABLE _pg_classy._class(
   class_id        serial  PRIMARY KEY
   , class_name      text  NOT NULL
   , class_version     int   NOT NULL -- Same as _trunklet.template.template_version
+    CONSTRAINT class_version_must_be_greater_than_0 CHECK( class_version > 0 )
   , CONSTRAINT _class__u_class_name__class_version UNIQUE( class_name, class_version )
 
   , unique_parameters_extract_list   text[] NOT NULL
