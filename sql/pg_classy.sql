@@ -104,6 +104,10 @@ r_class := _pg_classy.class__get(class_name, class_version);
 /*
  * Extract parameter values that will uniquely identify this instance of
  * class_name and make sure we haven't already registered them.
+ *
+ * TODO: We should really track all the objects created by a class. As part of
+ * that, we should identify one of those objects as being the 'face' of a
+ * class. Maybe a schema, maybe a table, maybe a function.
  */
 v_unique_parameters := trunklet.extract_parameters(r_class.unique_parameters, parameters);
 
