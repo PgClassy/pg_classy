@@ -1,5 +1,5 @@
-CREATE SCHEMA _pg_classy_test;
-SET search_path = _pg_classy_test, tap, "$user";
+CREATE SCHEMA _classy_test;
+SET search_path = _classy_test, tap, "$user";
 
 /*
  * NOTE! DO NOT use CREATE OR REPLACE FUNCTION in here. If you do that and
@@ -24,24 +24,24 @@ CREATE FUNCTION test_schemas
 DECLARE
 BEGIN
   RETURN NEXT schema_privs_are(
-    'pg_classy'
+    'classy'
     , 'public'
     , array[ 'USAGE' ]
   );
 
   RETURN NEXT schema_privs_are(
-    '_pg_classy'
+    '_classy'
     , 'public'
     , array[ NULL ]
   );
   RETURN NEXT schema_privs_are(
-    '_pg_classy'
-    , 'pg_classy__dependency'
+    '_classy'
+    , 'classy__dependency'
     , array[ 'USAGE' ]
   );
 
   RETURN NEXT schema_privs_are(
-    '_pg_classy_functions'
+    '_classy_functions'
     , 'public'
     , array[ 'USAGE' ]
   );
@@ -52,7 +52,7 @@ $body$;
  * LANGUAGE FACTORY
  */
 
--- Not sure what we want here for pg_classy... maybe just CREATE EXTENSION "trunklet-format" since this idiotic^Wsimple language probably won't work.
+-- Not sure what we want here for classy... maybe just CREATE EXTENSION "trunklet-format" since this idiotic^Wsimple language probably won't work.
 CREATE FUNCTION bogus_language_name(
 ) RETURNS text LANGUAGE sql AS $$SELECT 'bogus template language that does not exist'::text$$;
 CREATE FUNCTION get_test_language_name(
@@ -61,7 +61,7 @@ CREATE FUNCTION get_test_language_id(
 ) RETURNS int LANGUAGE plpgsql AS $body$
 BEGIN
   BEGIN
-  PERFORM pg_classy.template_language__add(
+  PERFORM classy.template_language__add(
       get_test_language_name()
       , parameter_type := 'text[]'
       , template_type := 'text'
@@ -91,7 +91,7 @@ $extract$
     WHEN no_data_found OR unique_violation THEN
       NULL;
   END;
-  RETURN _pg_classy.language__get_id( get_test_language_name() );
+  RETURN _classy.language__get_id( get_test_language_name() );
 END
 $body$;
 

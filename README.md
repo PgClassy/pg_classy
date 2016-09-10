@@ -1,4 +1,4 @@
-pg_classy
+classy
 =========
 
 A long description
@@ -47,31 +47,31 @@ You need to run the test suite using a super user, such as the default
 
     make installcheck PGUSER=postgres
 
-Once pg_classy is installed, you can add it to a database. If you're running
+Once classy is installed, you can add it to a database. If you're running
 PostgreSQL 9.1.0 or greater, it's a simple as connecting to a database as a
 super user and running:
 
-    CREATE EXTENSION pg_classy;
+    CREATE EXTENSION classy;
 
-If you've upgraded your cluster to PostgreSQL 9.1 and already had pg_classy
+If you've upgraded your cluster to PostgreSQL 9.1 and already had classy
 installed, you can upgrade it to a properly packaged extension with:
 
-    CREATE EXTENSION pg_classy FROM unpackaged;
+    CREATE EXTENSION classy FROM unpackaged;
 
 For versions of PostgreSQL less than 9.1.0, you'll need to run the
 installation script:
 
-    psql -d mydb -f /path/to/pgsql/share/contrib/pg_classy.sql
+    psql -d mydb -f /path/to/pgsql/share/contrib/classy.sql
 
-If you want to install pg_classy and all of its supporting objects into a specific
+If you want to install classy and all of its supporting objects into a specific
 schema, use the `PGOPTIONS` environment variable to specify the schema, like
 so:
 
-    PGOPTIONS=--search_path=extensions psql -d mydb -f pg_classy.sql
+    PGOPTIONS=--search_path=extensions psql -d mydb -f classy.sql
 
 Dependencies
 ------------
-The `pg_classy` data type has no dependencies other than PostgreSQL.
+The `classy` data type has no dependencies other than PostgreSQL.
 
 Copyright and License
 ---------------------

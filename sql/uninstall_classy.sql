@@ -16,6 +16,6 @@ BEGIN;
 -- template for your extension.
 
 DROP OPERATOR #? (text, text);
-DROP FUNCTION pg_classy(text, text);
-DROP TYPE pg_classy CASCADE;
+DROP FUNCTION classy(text, text);
+DROP TYPE classy CASCADE;
 COMMIT;

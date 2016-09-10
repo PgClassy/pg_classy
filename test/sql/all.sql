@@ -1,5 +1,5 @@
 \set ECHO none
-\i test/helpers/setup.sql
+\i test/pgxntool/setup.sql
 
 /*
 SET client_min_messages = debug;
@@ -10,4 +10,4 @@ SELECT * FROM _trunklet_test.test_process();
 -- Needed for now due to bug in pgtap-core.sql
 SET client_min_messages = WARNING;
 
-SELECT * FROM runtests( '_trunklet_test'::name );
+SELECT * FROM runtests( '_classy_test'::name );

@@ -1,16 +1,29 @@
 \set ECHO none
- ?column? 
-----------
- t
+
+INSTALL
+ template__dependency__add 
+---------------------------
+ 
 (1 row)
 
- ?column? 
-----------
- t
+ template__dependency__add 
+---------------------------
+ 
 (1 row)
 
- ?column? 
-----------
- t
+ template__dependency__add 
+---------------------------
+ 
 (1 row)
 
+ register 
+----------
+        4
+(1 row)
+
+
+UNINSTALL
+psql:sql/uninstall_classy.sql:13: WARNING:  25001: there is already a transaction in progress
+LOCATION:  BeginTransactionBlock, xact.c:3412
+psql:sql/uninstall_classy.sql:18: ERROR:  42883: operator does not exist: text #? text
+LOCATION:  LookupOperName, parse_oper.c:128
