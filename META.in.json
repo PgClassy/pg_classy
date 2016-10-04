@@ -72,21 +72,25 @@
     "X_comment": "Optional. 'prereqs': Prerequisits for the distribution. http://pgxn.org/spec/#prereqs",
     "X_comment": "Valid keys for 'prereqs' are configure, build, runtime, or test.",
     "X_comment": "Valid keys for 'requires' are requires, recommends, suggests, or conflicts.",
+    "X_comment": "Test depends on jsonb_object(array), added in 9.5",
     "prereqs": {
 
         "build": {
             "requires": {
-                "PostgreSQL": "9.5.0"
+                "PostgreSQL": "9.5.0",
+                "trunklet": ">= 0.2.0"
             }
         },
         "runtime": {
             "requires": {
-                "plpgsql": 0
+                "plpgsql": 0,
+                "trunklet": ">= 0.2.0"
             }
         },
         "test": {
             "requires": {
-                "pgtap": 0
+                "pgtap": 0,
+                "trunklet-format": ">= 0.2.0"
             }
         }
     },
