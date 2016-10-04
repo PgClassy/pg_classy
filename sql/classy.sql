@@ -67,18 +67,19 @@ $body$;
 
 -- TTODO: error for no record
 -- TTODO: properly handle missing class_version
-SELECT variant.register('trunklet_parameters', p_storage_allowed := true);
+--SELECT variant.register('trunklet_parameters', p_storage_allowed := true);
 CREATE TABLE _classy.instance(
   instance_id           serial    PRIMARY KEY
   , class_id            int       NOT NULL REFERENCES _classy._class
-  , unique_parameters   variant.variant(trunklet_parameters)  NOT NULL
+  , unique_parameters   text      NOT NULL
+  , CONSTRAINT instance__u_class_id__unique_parameters_text UNIQUE( class_id, unique_parameters )
 );
 -- This can't be a CONSTRAINT due to the cast. Can't use :: syntax because it won't parse.
-CREATE UNIQUE INDEX instance__u_class_id__unique_parameters_text ON _classy.instance( class_id, CAST(unique_parameters AS text) );
+--CREATE UNIQUE INDEX instance__u_class_id__unique_parameters_text ON _classy.instance( class_id, CAST(unique_parameters AS text) );
 
 CREATE OR REPLACE FUNCTION _classy.instance__get_loose(
   class_id    int
-  , unique_parameters variant.variant(trunklet_parameters)
+  , unique_parameters   text
 ) RETURNS _classy.instance LANGUAGE sql AS $body$
   SELECT *
     FROM _classy.instance i
@@ -89,13 +90,13 @@ $body$;
 CREATE OR REPLACE FUNCTION classy.instantiate(
   class_name text
   , class_version int
-  , parameters variant.variant
+  , parameters text
 ) RETURNS void LANGUAGE plpgsql AS $body$
 DECLARE
   r_class _classy.class;
   r_instance record;
-  v_parameters variant.variant := paramaters;
-  v_unique_parameters variant.variant;
+  v_parameters text := paramaters;
+  v_unique_parameters text;
 BEGIN
 -- Note that class definitions might actually be stored in multiple tables
 r_class := _classy.class__get(class_name, class_version);

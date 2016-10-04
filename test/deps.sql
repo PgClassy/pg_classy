@@ -4,7 +4,6 @@
 
 -- Squelch warnings about already-exists
 SET client_min_messages = WARNING;
-CREATE EXTENSION IF NOT EXISTS variant;
 CREATE EXTENSION IF NOT EXISTS trunklet;
 SET client_min_messages = NOTICE;
 

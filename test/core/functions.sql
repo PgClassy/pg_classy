@@ -83,7 +83,7 @@ SELECT array(
     SELECT (parameters::text[])[i]
       FROM generate_subscripts( parameters::text[], 1 ) i
       WHERE i = ANY( extract_list::int[] )
-  )::variant.variant
+  )::text
 $extract$
     );
   EXCEPTION

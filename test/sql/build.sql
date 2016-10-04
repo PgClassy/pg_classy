@@ -1,10 +1,9 @@
 \set ECHO none
-CREATE EXTENSION IF NOT EXISTS variant;
+BEGIN;
 CREATE EXTENSION IF NOT EXISTS trunklet;
 
 \i test/pgxntool/psql.sql
 
-BEGIN;
 -- Need to create this manually
 CREATE SCHEMA classy;
 
@@ -12,7 +11,4 @@ CREATE SCHEMA classy;
 \echo INSTALL
 \i sql/classy.sql
 
-\echo
-\echo UNINSTALL
-\i sql/uninstall_classy.sql
-ROLLBACK;
+\echo # TRANSACTION INTENTIONALLY LEFT OPEN
