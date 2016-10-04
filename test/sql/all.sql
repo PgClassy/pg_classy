@@ -10,4 +10,5 @@ SELECT * FROM _trunklet_test.test_process();
 -- Needed for now due to bug in pgtap-core.sql
 SET client_min_messages = WARNING;
 
+SET search_path = _classy_test, tap, "$user";
 SELECT * FROM runtests( '_classy_test'::name );

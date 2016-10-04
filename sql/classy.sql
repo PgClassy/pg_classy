@@ -44,6 +44,12 @@ SELECT trunklet.template__dependency__add( '_classy._class', 'preprocess_templat
 -- TTODO: PK, UNIQUE
 -- TTODO: types match _trunklet.template fields
 
+/*
+CREATE OR REPLACE FUNCTION classy.add(
+  class_name text
+  , unique_parameters_extract_list text[]
+  , creation_template
+*/
 CREATE OR REPLACE FUNCTION _classy.class__get(
   class_name text
   , class_version int DEFAULT NULL
@@ -55,9 +61,9 @@ BEGIN
   SELECT INTO STRICT r_class
       *
     FROM _classy._class c
-    WHERE c.class_name = class_name
-      AND c.class_version = coalesce( class_version
-          , ( SELECT max(class_version) FROM _classy._class WHERE class_name = class_name )
+    WHERE c.class_name = class__get.class_name
+      AND c.class_version = coalesce( class__get.class_version
+          , ( SELECT max(c2.class_version) FROM _classy._class c2 WHERE c2.class_name = class__get.class_name )
         )
   ;
 
@@ -73,6 +79,7 @@ CREATE TABLE _classy.instance(
   , class_id            int       NOT NULL REFERENCES _classy._class
   , unique_parameters   text      NOT NULL
   , CONSTRAINT instance__u_class_id__unique_parameters_text UNIQUE( class_id, unique_parameters )
+  , parameters          text      NOT NULL
 );
 -- This can't be a CONSTRAINT due to the cast. Can't use :: syntax because it won't parse.
 --CREATE UNIQUE INDEX instance__u_class_id__unique_parameters_text ON _classy.instance( class_id, CAST(unique_parameters AS text) );
@@ -94,12 +101,21 @@ CREATE OR REPLACE FUNCTION classy.instantiate(
 ) RETURNS void LANGUAGE plpgsql AS $body$
 DECLARE
   r_class _classy.class;
-  r_instance record;
-  v_parameters text := paramaters;
+  r_template record;
+  r_instance _classy.instance;
   v_unique_parameters text;
+
+  sql text;
 BEGIN
 -- Note that class definitions might actually be stored in multiple tables
 r_class := _classy.class__get(class_name, class_version);
+
+-- TODO: Add formal support for this in trunklet
+SELECT INTO STRICT r_template
+    *
+  FROM _trunklet.template
+  WHERE template_id = r_class.creation_template_id
+;
 
 /*
  * Extract parameter values that will uniquely identify this instance of
@@ -109,14 +125,18 @@ r_class := _classy.class__get(class_name, class_version);
  * that, we should identify one of those objects as being the 'face' of a
  * class. Maybe a schema, maybe a table, maybe a function.
  */
-v_unique_parameters := trunklet.extract_parameters(r_class.unique_parameters, parameters);
+v_unique_parameters := trunklet.extract_parameters(
+  (_trunklet.language__get(r_template.language_id)).language_name
+  , parameters
+  , r_class.unique_parameters_extract_list
+);
 
 /*
- * See if we're already instance. We don't bother with race condition
+ * See if we're already instantiated. We don't bother with race condition
  * because our insert at the bottom will eventually fail if nothing else.
  */
-r_instance := _classy.instance__get__loose( r_class.class_id, v_unique_paramaters );
-IF r_instance.instance_id IS NOT NULL THEN
+r_instance := _classy.instance__get_loose( r_class.class_id, v_unique_parameters );
+IF NOT r_instance IS NULL THEN -- Remember that record IS NOT NULL is only true if ALL fields are not null
   RAISE 'instance of % already created', class_name
     USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
   ;
@@ -129,7 +149,7 @@ END IF;
 IF r_class.preprocess_template_id IS NOT NULL THEN
   RAISE 'preprocessing not currently supported';
   /*
-  v_paramaters := trunklet.execute_into(
+  v_parameters := trunklet.execute_into(
     r_class.preprocess_template_name
     , class_version
     , creation_preprocess[i], parameters
@@ -137,14 +157,17 @@ IF r_class.preprocess_template_id IS NOT NULL THEN
   */
 END IF;
 
-PERFORM execute(
-  r_class.creation_template_id
-  , v_parameters
-);
+  sql := trunklet.process(
+    r_template.template_name
+    , r_template.template_version
+    , parameters
+  );
+  RAISE DEBUG E'executing sql: \n%', sql;
+  EXECUTE sql;
 
   BEGIN
-    INSERT INTO _classy.instances(class_id, class_version, unique_parameters, final_parameters)
-      VALUES( r_class.class_id, r_class.version, v_unique_parameters, v_paramaters )
+    INSERT INTO _classy.instance(class_id, unique_parameters, parameters)
+      VALUES( r_class.class_id, v_unique_parameters, parameters )
     ;
   EXCEPTION
     WHEN unique_violation THEN

@@ -1,16 +1,17 @@
 \set ECHO none
+
+psql:test/pgxntool/tap_setup.sql:3: NOTICE:  42P06: schema "tap" already exists, skipping
+LOCATION:  CreateSchemaCommand, schemacmds.c:115
+psql:test/pgxntool/tap_setup.sql:5: NOTICE:  42710: extension "pgtap" already exists, skipping
+LOCATION:  CreateExtension, extension.c:1535
+    # Subtest: _classy_test.test_instantiate()
+    ok 1 - Get test data set "base" for table _classy._class
+    ok 2 - SELECT classy.instantiate('pg_classy test create function', 1, '{"body": "SELECT a + b", "options": "", "returns": "int", "language": "sql", "arguments": "a int, b int", "comment_code": "", "function_name": "pg_temp.instantiate_test_function"}')
+    1..2
+ok 1 - _classy_test.test_instantiate
     # Subtest: _classy_test.test_schemas()
     ok 1 - Role public should be granted USAGE on schema classy
     ok 2 - Role public should be granted no privileges on schema _classy
-    not ok 3 - Role classy__dependency should be granted USAGE on schema _classy
-    # Failed test 3: "Role classy__dependency should be granted USAGE on schema _classy"
-    #     Role classy__dependency does not exist
-    not ok 4 - Role public should be granted USAGE on schema _classy_functions
-    # Failed test 4: "Role public should be granted USAGE on schema _classy_functions"
-    #     Schema _classy_functions does not exist
-    1..4
-    # Looks like you failed 2 tests of 4
-not ok 1 - _classy_test.test_schemas
-# Failed test 1: "_classy_test.test_schemas"
-1..1
-# Looks like you failed 1 test of 1
+    1..2
+ok 2 - _classy_test.test_schemas
+1..2

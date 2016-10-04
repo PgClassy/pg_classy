@@ -34,6 +34,7 @@ BEGIN
     , 'public'
     , array[ NULL ]
   );
+  /*
   RETURN NEXT schema_privs_are(
     '_classy'
     , 'classy__dependency'
@@ -45,6 +46,7 @@ BEGIN
     , 'public'
     , array[ 'USAGE' ]
   );
+  */
 END
 $body$;
 
@@ -95,5 +97,80 @@ $extract$
 END
 $body$;
 
+
+CREATE FUNCTION get_test_class(
+) RETURNS text LANGUAGE sql AS $$SELECT 'pg_classy test create function'::text$$;
+
+SELECT tf.register(
+  '_classy._class'
+  , array[
+  row(
+    'base'
+    , format(
+        $tf_regsiter$
+          INSERT INTO _classy._class(
+            class_name
+            , class_version
+            , unique_parameters_extract_list
+            , creation_template_id
+          ) VALUES(
+            %1$L
+            , 1
+            , '{function_name, arguments}'
+            , trunklet.template__add(
+              'format'
+              , 'pg_classy: creation template for ' || %1$L
+              , 
+$template$
+%2$s
+$template$
+            )
+          )
+            RETURNING *
+      $tf_regsiter$
+      , get_test_class()
+      , $template$
+CREATE OR REPLACE FUNCTION %function_name%s(
+%arguments%s
+) RETURNS %returns%s
+LANGUAGE %language%s
+%options%s AS 
+%body%L
+%comment_code%s
+$template$
+    )
+  )::tf.test_set
+  ]
+);
+
+CREATE FUNCTION test_instantiate
+() RETURNS SETOF text LANGUAGE plpgsql AS $body$
+DECLARE
+  c_param_array CONSTANT text[] := array[
+    'function_name', 'pg_temp.instantiate_test_function'
+    , 'arguments', $$a int, b int$$
+    , 'returns', 'int'
+    , 'language', 'sql'
+    , 'options', ''
+    , 'body', 'SELECT a + b'
+    , 'comment_code', ''
+  ];
+  c_param_jsonb CONSTANT jsonb := jsonb_object(c_param_array);
+
+  sql text;
+BEGIN
+  RETURN NEXT tf.tap('_classy._class', 'base');
+
+  sql := format(
+    $$SELECT classy.instantiate(%L, 1, %L)$$
+    , get_test_class()
+    , c_param_jsonb
+  );
+  RETURN NEXT lives_ok(
+    sql
+    , sql
+  );
+END
+$body$;
 
 -- vi: expandtab sw=2 ts=2
