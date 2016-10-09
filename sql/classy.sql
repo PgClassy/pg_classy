@@ -171,7 +171,7 @@ END IF;
     ;
   EXCEPTION
     WHEN unique_violation THEN
-      RAISE 'instance of % already created', class_name
+      RAISE 'instance of "%" already created', class_name
         USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
       ;
   END;

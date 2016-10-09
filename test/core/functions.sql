@@ -146,11 +146,17 @@ $template$
 CREATE FUNCTION test_instantiate
 () RETURNS SETOF text LANGUAGE plpgsql AS $body$
 DECLARE
+  tf_schema CONSTANT name := '_classy_test';
+  tf_name CONSTANT name := 'instantiate_test_function';
+  tf_argtypes CONSTANT name[] := '{int,int}'::regtype[];
+  tf_return CONSTANT name := 'int'::regtype;
+  tf_language CONSTANT name := 'sql';
+
   c_param_array CONSTANT text[] := array[
-    'function_name', 'pg_temp.instantiate_test_function'
-    , 'arguments', $$a int, b int$$
-    , 'returns', 'int'
-    , 'language', 'sql'
+    'function_name', tf_schema || '.' || tf_name
+    , 'arguments', $$a int, b int$$ -- SEE ALSO tf_argtypes!
+    , 'returns', tf_return::text
+    , 'language', tf_language::text
     , 'options', ''
     , 'body', 'SELECT a + b'
     , 'comment_code', ''
@@ -161,6 +167,12 @@ DECLARE
 BEGIN
   RETURN NEXT tf.tap('_classy._class', 'base');
 
+  RETURN NEXT hasnt_function(
+    tf_schema
+    , tf_name
+    , tf_argtypes
+    , 'ensure test function does not already exist'
+  );
   sql := format(
     $$SELECT classy.instantiate(%L, 1, %L)$$
     , get_test_class()
@@ -169,6 +181,21 @@ BEGIN
   RETURN NEXT lives_ok(
     sql
     , sql
+  );
+  RETURN NEXT throws_ok(
+    sql
+    , NULL
+    , format( 'instance of "%s" already created', get_test_class() )
+  );
+
+  RETURN NEXT function_lang_is(
+    tf_schema, tf_name, tf_argtypes
+    , tf_language
+  );
+
+  RETURN NEXT function_returns(
+    tf_schema, tf_name, tf_argtypes
+    , tf_return
   );
 END
 $body$;
