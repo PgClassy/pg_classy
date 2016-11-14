@@ -113,6 +113,7 @@ SELECT tf.register(
             , class_version
             , unique_parameters_extract_list
             , creation_template_id
+            , preprocess_template_id
           ) VALUES(
             %1$L
             , 1
@@ -125,6 +126,14 @@ $template$
 %2$s
 $template$
             )
+            , trunklet.template__add(
+              'format'
+              , 'pg_classy: pre-process template for ' || %1$L
+              , 
+$template$
+%3$s
+$template$
+            )
           )
             RETURNING *
       $tf_regsiter$
@@ -135,33 +144,177 @@ CREATE OR REPLACE FUNCTION %function_name%s(
 ) RETURNS %returns%s
 LANGUAGE %language%s
 %options%s AS 
-%body%L
+%body%L;
 %comment_code%s
 $template$
+      , $preprocess$
+SELECT json_object( array[
+  'function_name', %function_name%L
+  , 'arguments', %arguments%L
+  , 'returns', %returns%L
+  , 'language', %language%L
+  , 'options', %options%L
+  , 'body', %body%L
+  , 'comment_code', coalesce(
+    %comment_code%OL
+    , CASE WHEN nullif(%comment%OL, '') IS NOT NULL THEN
+        format(
+          'COMMENT ON FUNCTION %%s(%%s) IS %%L;'
+          , %function_name%L
+          , %arguments%L
+          , %comment%OL
+        )
+      END
+    , ''
+  )
+  ] )
+$preprocess$
     )
   )::tf.test_set
   ]
 );
 
+CREATE TYPE params AS (
+  function_name text
+  , arguments text
+  , returns text
+  , language text
+  , options text
+  , body text
+  , comment text
+);
+CREATE FUNCTION params(
+  function_name text = NULL
+  , arguments text = NULL
+  , returns text = NULL
+  , language text = NULL
+  , options text = NULL
+  , body text = NULL
+  , comment text = NULL
+) RETURNS params LANGUAGE sql IMMUTABLE AS $body$
+SELECT (
+  function_name
+  , arguments
+  , returns
+  , language
+  , options
+  , body
+  , comment
+)::params
+$body$;
+CREATE FUNCTION params_json(
+  function_name text = NULL
+  , arguments text = NULL
+  , returns text = NULL
+  , language text = 'sql'
+  , options text = ''
+  , body text = NULL
+  , comment text = NULL
+) RETURNS json LANGUAGE sql IMMUTABLE AS $body$
+SELECT row_to_json( params(
+  function_name
+  , arguments
+  , returns
+  , language
+  , options
+  , body
+  , comment
+) );
+$body$;
+CREATE FUNCTION def_params
+() RETURNS params LANGUAGE sql IMMUTABLE AS $body$
+SELECT params(
+  'classy_test.test_function'
+  , 'a int, b int'
+  , 'int'
+  , body := 'SELECT a+b'
+  , comment := 'test function'
+)
+$body$;
+
+CREATE FUNCTION test_preprocess
+() RETURNS SETOF text LANGUAGE plpgsql AS $body$
+DECLARE
+  args text := row_to_json(def_params());
+  r_base record;
+
+  t_jsonb CONSTANT text := 'SELECT * FROM jsonb_each(%L::jsonb) ORDER BY key';
+  out_text text;
+  expected_text text;
+BEGIN
+  r_base := tf.get(NULL::_classy._class, 'base');
+  RETURN NEXT isnt(
+    r_base.preprocess_template_id
+    , NULL
+    , 'preprocess_template_id is not null'
+  );
+
+  out_text := trunklet.process( r_base.preprocess_template_id, args );
+  expected_text := $$
+
+SELECT json_object( array[
+  'function_name', 'classy_test.test_function'
+  , 'arguments', 'a int, b int'
+  , 'returns', 'int'
+  , 'language', NULL
+  , 'options', NULL
+  , 'body', 'SELECT a+b'
+  , 'comment_code', coalesce(
+    NULL
+    , CASE WHEN nullif('test function', '') IS NOT NULL THEN
+        format(
+          'COMMENT ON FUNCTION %s(%s) IS %L;'
+          , 'classy_test.test_function'
+          , 'a int, b int'
+          , 'test function'
+        )
+      END
+    , ''
+  )
+  ] )
+
+$$;
+  RETURN NEXT results_eq(
+    format($$SELECT unnest(%L::text[])$$, string_to_array(out_text, E'\n'))
+    , string_to_array(expected_text, E'\n')
+    , 'Preprocess template processes correctly'
+  );
+
+  RETURN NEXT results_eq(
+    format(
+      t_jsonb
+      , trunklet.execute_into( r_base.preprocess_template_id, args )
+    )
+    , format(
+      t_jsonb
+      , args::jsonb - 'comment' ||
+        $${"comment_code" : "COMMENT ON FUNCTION classy_test.test_function(a int, b int) IS 'test function';"}$$::jsonb
+    )
+    , 'Preprocess template produces correct output'
+  );
+END
+$body$;
+
 CREATE FUNCTION test_instantiate
 () RETURNS SETOF text LANGUAGE plpgsql AS $body$
 DECLARE
+  tf_args CONSTANT text := 'a int, b int';
+  tf_argtypes CONSTANT name[] := '{int,int}'::regtype[];
+
   tf_schema CONSTANT name := '_classy_test';
   tf_name CONSTANT name := 'instantiate_test_function';
-  tf_argtypes CONSTANT name[] := '{int,int}'::regtype[];
+  tf_full_name CONSTANT name := tf_schema || '.' || tf_name;
   tf_return CONSTANT name := 'int'::regtype;
   tf_language CONSTANT name := 'sql';
 
-  c_param_array CONSTANT text[] := array[
-    'function_name', tf_schema || '.' || tf_name
-    , 'arguments', $$a int, b int$$ -- SEE ALSO tf_argtypes!
-    , 'returns', tf_return::text
-    , 'language', tf_language::text
-    , 'options', ''
-    , 'body', 'SELECT a + b'
-    , 'comment_code', ''
-  ];
-  c_param_jsonb CONSTANT jsonb := jsonb_object(c_param_array);
+  c_param_jsonb CONSTANT jsonb := params_json(
+    tf_full_name
+    , tf_args
+    , tf_return
+    , tf_language
+    , body := 'SELECT a+b'
+    , comment := 'test function'
+  );
 
   sql text;
 BEGIN
@@ -196,6 +349,12 @@ BEGIN
   RETURN NEXT function_returns(
     tf_schema, tf_name, tf_argtypes
     , tf_return
+  );
+
+  RETURN NEXT is(
+    obj_description( tf_full_name::regproc, 'pg_proc' )
+    , 'test function'
+    , 'Verify function description'
   );
 END
 $body$;

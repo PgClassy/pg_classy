@@ -104,6 +104,7 @@ DECLARE
   r_template record;
   r_instance _classy.instance;
   v_unique_parameters text;
+  v_parameters text;
 
   sql text;
 BEGIN
@@ -118,6 +119,19 @@ SELECT INTO STRICT r_template
 ;
 
 /*
+ * We may need to pre-process our parameters. NOTE: This needs to happen BEFORE
+ * we extract unique parameters.
+ */
+IF r_class.preprocess_template_id IS NOT NULL THEN
+  v_parameters := trunklet.execute_into(
+    r_class.preprocess_template_id
+    , parameters
+  );
+ELSE
+  v_parameters := parameters;
+END IF;
+
+/*
  * Extract parameter values that will uniquely identify this instance of
  * class_name and make sure we haven't already registered them.
  *
@@ -127,7 +141,7 @@ SELECT INTO STRICT r_template
  */
 v_unique_parameters := trunklet.extract_parameters(
   (_trunklet.language__get(r_template.language_id)).language_name
-  , parameters
+  , v_parameters
   , r_class.unique_parameters_extract_list
 );
 
@@ -142,32 +156,17 @@ IF NOT r_instance IS NULL THEN -- Remember that record IS NOT NULL is only true 
   ;
 END IF;
 
-/*
- * We may need to pre-process our parameters.
- */
-
-IF r_class.preprocess_template_id IS NOT NULL THEN
-  RAISE 'preprocessing not currently supported';
-  /*
-  v_parameters := trunklet.execute_into(
-    r_class.preprocess_template_name
-    , class_version
-    , creation_preprocess[i], parameters
-  );
-  */
-END IF;
-
   sql := trunklet.process(
     r_template.template_name
     , r_template.template_version
-    , parameters
+    , v_parameters
   );
   RAISE DEBUG E'executing sql: \n%', sql;
   EXECUTE sql;
 
   BEGIN
     INSERT INTO _classy.instance(class_id, unique_parameters, parameters)
-      VALUES( r_class.class_id, v_unique_parameters, parameters )
+      VALUES( r_class.class_id, v_unique_parameters, v_parameters )
     ;
   EXCEPTION
     WHEN unique_violation THEN
