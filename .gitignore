@@ -15,6 +15,7 @@ meta.mk
 # built targets
 /sql/*--*
 !/sql/*--*--*.sql
+.build/
 
 # Test artifacts
 results/

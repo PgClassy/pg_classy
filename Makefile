@@ -1,7 +1,41 @@
 include pgxntool/base.mk
 
+# Need to manually strip control files out of $(DATA)
+TMP := $(filter-out %.control,$(DATA))
+DATA = $(TMP) $(CONTROLS)
+
 # TODO: Remove this after merging pgxntool 0.2.1+
 testdeps: $(TEST_SQL_FILES) $(TEST_SOURCE_FILES)
+
+# .build directory
+B := .build
+EXTRA_CLEAN += $B
+$B:
+	mkdir -p $B
+
+#
+# CONTROL FILES
+#
+CONTROLS = $(EXTENSIONS:%=$B/%.control)
+all: $(CONTROLS)
+testdeps: $(CONTROLS)
+
+# Deps
+meta_deps: META.json meta_process.sh meta_funcs.sh
+
+# Need 3 separate targets to support 3 cases...
+
+# Case 1: there's simply a control file
+$B/%.control: %.control | $B
+	cp $< $@
+
+# Case 2: there's a control.META file
+$B/%.control: %.control.META meta_deps | $B
+	./meta_process.sh -p "provides.$*" $< $@
+
+# Case 3: Use default.control.META
+$B/%.control: default.control.META meta_deps | $B
+	./meta_process.sh -p "provides.$*" $< $@
 
 #
 # Test deps

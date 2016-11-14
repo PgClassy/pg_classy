@@ -1,0 +1,4 @@
+comment = '@abstract@'
+default_version = '@version@'
+relocatable = false
+schema = 'classy'

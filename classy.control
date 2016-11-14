@@ -1,5 +1,0 @@
-# classy extension
-comment = 'Object-oriented classes for PostgreSQL'
-default_version = '0.0.1'
-relocatable = false
-schema = 'classy'
