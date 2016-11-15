@@ -90,8 +90,8 @@ CREATE OR REPLACE FUNCTION _classy.instance__get_loose(
 ) RETURNS _classy.instance LANGUAGE sql AS $body$
   SELECT *
     FROM _classy.instance i
-    WHERE i.class_id = class_id
-      AND i.unique_parameters::text = unique_parameters::text
+    WHERE i.class_id = instance__get_loose.class_id
+      AND i.unique_parameters::text = instance__get_loose.unique_parameters::text
 $body$;
 
 CREATE OR REPLACE FUNCTION classy.instantiate(
@@ -164,15 +164,22 @@ END IF;
   RAISE DEBUG E'executing sql: \n%', sql;
   EXECUTE sql;
 
+  DECLARE
+    con_name text;
   BEGIN
     INSERT INTO _classy.instance(class_id, unique_parameters, parameters)
       VALUES( r_class.class_id, v_unique_parameters, v_parameters )
     ;
   EXCEPTION
     WHEN unique_violation THEN
-      RAISE 'instance of "%" already created', class_name
-        USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
-      ;
+      GET STACKED DIAGNOSTICS con_name = CONSTRAINT_NAME;
+      IF con_name = 'instance__u_class_id__unique_parameters_text' THEN
+        RAISE 'instance of "%" already created', class_name
+          USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
+        ;
+      ELSE
+        RAISE;
+      END IF;
   END;
 END
 $body$;

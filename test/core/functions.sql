@@ -51,6 +51,22 @@ END
 $body$;
 
 /*
+ * TABLES
+ */
+CREATE FUNCTION test_tables
+() RETURNS SETOF text LANGUAGE plpgsql AS $body$
+DECLARE
+BEGIN
+  -- This test is important to ensure the constraint name check in instantiate() is correct.
+  RETURN NEXT index_is_unique(
+    '_classy'
+    , 'instance'
+    , 'instance__u_class_id__unique_parameters_text'::name
+  );
+END
+$body$;
+
+/*
  * LANGUAGE FACTORY
  */
 
@@ -202,25 +218,6 @@ SELECT (
   , comment
 )::params
 $body$;
-CREATE FUNCTION params_json(
-  function_name text = NULL
-  , arguments text = NULL
-  , returns text = NULL
-  , language text = 'sql'
-  , options text = ''
-  , body text = NULL
-  , comment text = NULL
-) RETURNS json LANGUAGE sql IMMUTABLE AS $body$
-SELECT row_to_json( params(
-  function_name
-  , arguments
-  , returns
-  , language
-  , options
-  , body
-  , comment
-) );
-$body$;
 CREATE FUNCTION def_params
 () RETURNS params LANGUAGE sql IMMUTABLE AS $body$
 SELECT params(
@@ -307,7 +304,17 @@ DECLARE
   tf_return CONSTANT name := 'int'::regtype;
   tf_language CONSTANT name := 'sql';
 
-  c_param_jsonb CONSTANT jsonb := params_json(
+  T_inst CONSTANT text := format(
+    $$SELECT classy.instantiate(%L, 1, row_to_json(%%L::params)::text )$$
+    , get_test_class()
+  );
+
+  c_params params;
+  v_params params;
+
+  sql text;
+BEGIN
+  c_params := params(
     tf_full_name
     , tf_args
     , tf_return
@@ -316,8 +323,6 @@ DECLARE
     , comment := 'test function'
   );
 
-  sql text;
-BEGIN
   RETURN NEXT tf.tap('_classy._class', 'base');
 
   RETURN NEXT hasnt_function(
@@ -326,15 +331,10 @@ BEGIN
     , tf_argtypes
     , 'ensure test function does not already exist'
   );
-  sql := format(
-    $$SELECT classy.instantiate(%L, 1, %L)$$
-    , get_test_class()
-    , c_param_jsonb
-  );
-  RETURN NEXT lives_ok(
-    sql
-    , sql
-  );
+
+  sql := format( T_inst, c_params );
+  RETURN NEXT lives_ok( sql, sql );
+
   RETURN NEXT throws_ok(
     sql
     , NULL
@@ -356,6 +356,18 @@ BEGIN
     , 'test function'
     , 'Verify function description'
   );
+
+  -- Test variations
+  v_params := c_params;
+  v_params.function_name := tf_full_name || '2';
+  sql := format( T_inst, v_params );
+  RETURN NEXT lives_ok( sql, sql );
+
+  v_params := c_params;
+  v_params.arguments := 'a bigint, b bigint';
+  v_params.returns := 'bigint';
+  sql := format( T_inst, v_params );
+  RETURN NEXT lives_ok( sql, sql );
 END
 $body$;
 
