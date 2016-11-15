@@ -50,6 +50,20 @@
             "docfile": "doc/classy.md",
 
             "X_end": ""
+        },
+        "composite_constructor": {
+            "X_comment": "REQUIRED. File containing extension.",
+            "file": "sql/composite_constructor.sql",
+
+            "X_comment": "REQUIRED. Version the extension is at.",
+            "version": "0.0.1",
+
+            "X_comment": "Optional: \"abstract\": Description of the extension.",
+            "abstract": "Creates constructor functions for composite types.",
+
+            "X_comment": "Optional: \"docfile\": filesystem path to document file for extension.",
+
+            "X_end": ""
         }
     },
 

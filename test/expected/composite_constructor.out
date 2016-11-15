@@ -1,0 +1,23 @@
+\set ECHO none
+
+1..19
+ok 1 - composite_constructor exists
+ok 2 - pg_temp.complex() does not exist
+ok 3 - Verify results of preprocessing template
+ok 4 - Instantiate pg_temp.complex
+ok 5 - Duplicate instantiation throws error
+ok 6 - pg_temp.complex() does exist
+ok 7 - complex() is a SQL function
+ok 8 - complex() returns complex type
+ok 9 - complex() is not strict
+ok 10 - complex() is immutable
+ok 11 - complex() produces correct output
+ok 12 - complex() works with no inputs
+ok 13 - top constructor should not exist
+ok 14 - Instantiate constructor for "top"
+ok 15 - top constructor should exist
+ok 16 - "mid space"() should not exist
+ok 17 - Instantiate constructor for "mid space"
+ok 18 - "mid space"() should exist
+ok 19 - Verify results of top()
+# TRANSACTION INTENTIONALLY LEFT OPEN!
