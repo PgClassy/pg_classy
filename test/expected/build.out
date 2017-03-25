@@ -16,4 +16,14 @@ INSTALL
  
 (1 row)
 
+ template__dependency__add 
+---------------------------
+ 
+(1 row)
+
+ object__dependency__add 
+-------------------------
+ 
+(1 row)
+
 # TRANSACTION INTENTIONALLY LEFT OPEN

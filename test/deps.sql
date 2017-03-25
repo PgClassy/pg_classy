@@ -7,6 +7,10 @@
 
 -- Squelch warnings about already-exists
 SET client_min_messages = WARNING;
+CREATE EXTENSION IF NOT EXISTS cat_tools; -- object_reference depends on this
+CREATE EXTENSION IF NOT EXISTS count_nulls; -- object_reference depends on this
+CREATE EXTENSION IF NOT EXISTS object_reference;
+CREATE EXTENSION IF NOT EXISTS pgerror;
 CREATE EXTENSION IF NOT EXISTS trunklet;
 CREATE EXTENSION IF NOT EXISTS "trunklet-format";
 CREATE EXTENSION IF NOT EXISTS test_factory;

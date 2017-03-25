@@ -2,3 +2,4 @@ comment = '@abstract@'
 default_version = '@version@'
 relocatable = false
 schema = 'classy'
+requires = 'object_reference, trunklet'

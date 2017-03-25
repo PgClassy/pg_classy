@@ -81,12 +81,6 @@ SELECT throws_ok(
 );
 */
 
-SELECT hasnt_function(
-  pg_temp.sn()
-  , 'complex', '{float,float}'::regtype[]::name[]
-  , 'pg_temp.complex() does not exist'
-);
-
 SELECT is(
   pg_temp.preprocess('pg_temp.complex')::jsonb
   , replace(
@@ -95,6 +89,12 @@ SELECT is(
     , pg_temp.sn()
   )::jsonb
   , 'Verify results of preprocessing template'
+);
+SELECT * FROM _classy.instance;
+SELECT hasnt_function(
+  pg_temp.sn()
+  , 'complex', '{float,float}'::regtype[]::name[]
+  , 'pg_temp.complex() does not exist'
 );
 
 SELECT lives_ok(

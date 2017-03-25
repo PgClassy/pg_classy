@@ -127,19 +127,26 @@ SELECT tf.register(
           INSERT INTO _classy._class(
             class_name
             , class_version
-            , unique_parameters_extract_list
+            , unique_identifier_template_id
             , creation_template_id
             , preprocess_template_id
           ) VALUES(
             %1$L
             , 1
-            , '{function_name, arguments}'
+            , trunklet.template__add(
+              'format'
+              , 'pg_classy: unique template for ' || %1$L
+              ,
+$template$
+%2$s
+$template$
+            )
             , trunklet.template__add(
               'format'
               , 'pg_classy: creation template for ' || %1$L
               , 
 $template$
-%2$s
+%3$s
 $template$
             )
             , trunklet.template__add(
@@ -147,13 +154,16 @@ $template$
               , 'pg_classy: pre-process template for ' || %1$L
               , 
 $template$
-%3$s
+%4$s
 $template$
             )
           )
             RETURNING *
       $tf_regsiter$
       , get_test_class()
+      , $unique$
+SELECT array[ 'function', %function_name%L, %arguments%L ]
+$unique$
       , $template$
 CREATE OR REPLACE FUNCTION %function_name%s(
 %arguments%s
@@ -312,6 +322,7 @@ DECLARE
   c_params params;
   v_params params;
 
+  r record;
   sql text;
 BEGIN
   c_params := params(
@@ -351,11 +362,27 @@ BEGIN
     , tf_return
   );
 
-  RETURN NEXT is(
-    obj_description( tf_full_name::regproc, 'pg_proc' )
-    , 'test function'
-    , 'Verify function description'
+  r := try_into(
+    format(
+      $try$
+      SELECT is(
+        obj_description( %L::regproc, 'pg_proc' )
+        , 'test function'
+        , 'Verify function description'
+      )
+      $try$
+      , tf_full_name
+    )
+    , NULL::text
   );
+  IF r.error IS NOT NULL THEN
+    RETURN NEXT lives_ok(
+      format( 'SELECT raise(%L)', r.error )
+      , 'Call to object_description failed'
+    );
+  ELSE
+    RETURN NEXT r.result;
+  END IF;
 
   -- Test variations
   v_params := c_params;

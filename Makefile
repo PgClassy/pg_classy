@@ -48,8 +48,8 @@ testdeps: $(test_core_files) $(TESTDIR)/deps.sql
 # OTHER DEPS
 #
 .PHONY: deps
-deps: trunklet test_factory
-testdeps: trunklet-format
+deps: trunklet object_reference
+testdeps: test_factory trunklet-format pgerror
 install: deps
 
 .PHONY: trunklet
@@ -62,8 +62,18 @@ trunklet-format: $(DESTDIR)$(datadir)/extension/trunklet-format.control
 $(DESTDIR)$(datadir)/extension/trunklet-format.control:
 	pgxn install 'trunklet-format>=0.2.0' --unstable
 
+.PHONY: object_reference
+object_reference: $(DESTDIR)$(datadir)/extension/object_reference.control
+$(DESTDIR)$(datadir)/extension/object_reference.control:
+	pgxn install object_reference
+
 .PHONY: test_factory
 test_factory: $(DESTDIR)$(datadir)/extension/test_factory.control
 $(DESTDIR)$(datadir)/extension/test_factory.control:
 	pgxn install test_factory
+
+.PHONY: pgerror
+pgerror: $(DESTDIR)$(datadir)/extension/pgerror.control
+$(DESTDIR)$(datadir)/extension/pgerror.control:
+	pgxn install pgerror
 

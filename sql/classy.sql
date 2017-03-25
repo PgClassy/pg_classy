@@ -11,9 +11,9 @@ CREATE TYPE _classy.class AS (
   , class_name      text --NOT NULL
   , class_version     int --NOT NULL -- Same as _trunklet.template.template_version
     --CONSTRAINT class_version_must_be_greater_than_0 CHECK( class_version > 0 )
-  , unique_parameters_extract_list   text[] --NOT NULL
 
   -- References to trunklet templates
+  , unique_identifier_template_id int --NOT NULL
   , creation_template_id  int --NOT NULL
   , upgrade_template_id   int
     --CONSTRAINT upgrade_template_required_after_version_1 CHECK( class_version = 1 OR upgrade_template_id IS NOT NULL )
@@ -27,9 +27,8 @@ CREATE TABLE _classy._class(
     CONSTRAINT class_version_must_be_greater_than_0 CHECK( class_version > 0 )
   , CONSTRAINT _class__u_class_name__class_version UNIQUE( class_name, class_version )
 
-  , unique_parameters_extract_list   text[] NOT NULL
-
   -- References to trunklet templates
+  , unique_identifier_template_id int NOT NULL
   , creation_template_id  int NOT NULL
   , upgrade_template_id   int
     CONSTRAINT upgrade_template_required_after_version_1 CHECK( class_version = 1 OR upgrade_template_id IS NOT NULL )
@@ -37,6 +36,7 @@ CREATE TABLE _classy._class(
 
   -- All other templates will be optional and added as a separate table
 );
+SELECT trunklet.template__dependency__add( '_classy._class', 'unique_identifier_template_id' );
 SELECT trunklet.template__dependency__add( '_classy._class', 'creation_template_id' );
 SELECT trunklet.template__dependency__add( '_classy._class', 'upgrade_template_id' );
 SELECT trunklet.template__dependency__add( '_classy._class', 'preprocess_template_id' );
@@ -47,8 +47,7 @@ SELECT trunklet.template__dependency__add( '_classy._class', 'preprocess_templat
 /*
 CREATE OR REPLACE FUNCTION classy.add(
   class_name text
-  , unique_parameters_extract_list text[]
-  , creation_template
+  , ...
 */
 CREATE OR REPLACE FUNCTION _classy.class__get(
   class_name text
@@ -77,21 +76,24 @@ $body$;
 CREATE TABLE _classy.instance(
   instance_id           serial    PRIMARY KEY
   , class_id            int       NOT NULL REFERENCES _classy._class
-  , unique_parameters   text      NOT NULL
-  , CONSTRAINT instance__u_class_id__unique_parameters_text UNIQUE( class_id, unique_parameters )
+--  , object_group_id     int       NOT NULL -- Will reference _object_reference.object_group
+  , unique_object_id    int       NOT NULL
+  , CONSTRAINT instance__u_class_id__unique_parameters_text UNIQUE( class_id, unique_object_id )
   , parameters          text      NOT NULL
 );
 -- This can't be a CONSTRAINT due to the cast. Can't use :: syntax because it won't parse.
 --CREATE UNIQUE INDEX instance__u_class_id__unique_parameters_text ON _classy.instance( class_id, CAST(unique_parameters AS text) );
+--SELECT object_reference.object_group__dependency__add('_classy.instance', 'object_group_id');
+SELECT object_reference.object__dependency__add('_classy.instance', 'unique_object_id');
 
 CREATE OR REPLACE FUNCTION _classy.instance__get_loose(
   class_id    int
-  , unique_parameters   text
+  , unique_object_id int
 ) RETURNS _classy.instance LANGUAGE sql AS $body$
   SELECT *
     FROM _classy.instance i
     WHERE i.class_id = instance__get_loose.class_id
-      AND i.unique_parameters::text = instance__get_loose.unique_parameters::text
+      AND i.unique_object_id = instance__get_loose.unique_object_id
 $body$;
 
 CREATE OR REPLACE FUNCTION classy.instantiate(
@@ -103,8 +105,9 @@ DECLARE
   r_class _classy.class;
   r_template record;
   r_instance _classy.instance;
-  v_unique_parameters text;
+  v_unique_parameters text[];
   v_parameters text;
+  v_unique_object_id int;
 
   sql text;
 BEGIN
@@ -120,7 +123,7 @@ SELECT INTO STRICT r_template
 
 /*
  * We may need to pre-process our parameters. NOTE: This needs to happen BEFORE
- * we extract unique parameters.
+ * we get our unique identifier
  */
 IF r_class.preprocess_template_id IS NOT NULL THEN
   v_parameters := trunklet.execute_into(
@@ -139,18 +142,29 @@ END IF;
  * that, we should identify one of those objects as being the 'face' of a
  * class. Maybe a schema, maybe a table, maybe a function.
  */
-v_unique_parameters := trunklet.extract_parameters(
-  (_trunklet.language__get(r_template.language_id)).language_name
+v_unique_parameters := trunklet.execute_text(
+  r_class.unique_identifier_template_id
   , v_parameters
-  , r_class.unique_parameters_extract_list
+);
+IF array_dims(v_unique_parameters) <> '[1:3]' THEN
+  RAISE 'unique parameter template must return a 1 dimension array with 3 elements'
+    USING DETAIL = format( 'template returned %L', v_unique_parameters )
+  ;
+END IF;
+v_unique_object_id := object_reference.object__getsert(
+  v_unique_parameters[1]
+  , v_unique_parameters[2]
+  , v_unique_parameters[3]
+  , loose := true -- Don't want this to throw an error if the object doesn't exist
 );
 
 /*
  * See if we're already instantiated. We don't bother with race condition
  * because our insert at the bottom will eventually fail if nothing else.
  */
-r_instance := _classy.instance__get_loose( r_class.class_id, v_unique_parameters );
+r_instance := _classy.instance__get_loose( r_class.class_id, v_unique_object_id );
 IF NOT r_instance IS NULL THEN -- Remember that record IS NOT NULL is only true if ALL fields are not null
+  RAISE DEBUG 'r_instance = %', r_instance;
   RAISE 'instance of % already created', class_name
     USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
   ;
@@ -164,11 +178,19 @@ END IF;
   RAISE DEBUG E'executing sql: \n%', sql;
   EXECUTE sql;
 
+  -- unique object better exist by now
+  v_unique_object_id := object_reference.object__getsert(
+    v_unique_parameters[1]
+    , v_unique_parameters[2]
+    , v_unique_parameters[3]
+    , loose := true -- Don't want this to throw an error if the object doesn't exist
+  );
+
   DECLARE
     con_name text;
   BEGIN
-    INSERT INTO _classy.instance(class_id, unique_parameters, parameters)
-      VALUES( r_class.class_id, v_unique_parameters, v_parameters )
+    INSERT INTO _classy.instance(class_id, unique_object_id, parameters)
+      VALUES( r_class.class_id, v_unique_object_id, v_parameters )
     ;
   EXCEPTION
     WHEN unique_violation THEN

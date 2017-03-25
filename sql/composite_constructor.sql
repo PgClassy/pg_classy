@@ -1,13 +1,19 @@
 INSERT INTO _classy._class(
     class_name
     , class_version
-    , unique_parameters_extract_list
+    , unique_identifier_template_id
     , creation_template_id
     , preprocess_template_id
   ) VALUES(
     'composite_constructor'
     , 1
-    , '{composite_fqn}'
+
+    , trunklet.template__add(
+      'format'
+      , 'pg_classy: uniqueness template for "composite_constructor"'
+      , $$SELECT array[ 'type', %composite_fqn%L, NULL ]$$
+    )
+
     , trunklet.template__add(
       'format'
       , 'pg_classy: creation template for "composite_constructor"'
@@ -24,6 +30,7 @@ COMMENT ON FUNCTION %composite_fqn%s(
 ) IS %comment_string%L;
 $template$
     )
+
     , trunklet.template__add(
       'format'
       , 'pg_classy: pre-processing template for "composite_constructor"'

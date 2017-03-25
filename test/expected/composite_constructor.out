@@ -2,8 +2,8 @@
 
 1..19
 ok 1 - composite_constructor exists
-ok 2 - pg_temp.complex() does not exist
-ok 3 - Verify results of preprocessing template
+ok 2 - Verify results of preprocessing template
+ok 3 - pg_temp.complex() does not exist
 ok 4 - Instantiate pg_temp.complex
 ok 5 - Duplicate instantiation throws error
 ok 6 - pg_temp.complex() does exist
