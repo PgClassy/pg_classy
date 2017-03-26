@@ -76,14 +76,14 @@ $body$;
 CREATE TABLE _classy.instance(
   instance_id           serial    PRIMARY KEY
   , class_id            int       NOT NULL REFERENCES _classy._class
---  , object_group_id     int       NOT NULL -- Will reference _object_reference.object_group
+  , object_group_id     int       NOT NULL -- Will reference _object_reference.object_group
   , unique_object_id    int       NOT NULL
   , CONSTRAINT instance__u_class_id__unique_parameters_text UNIQUE( class_id, unique_object_id )
-  , parameters          text      NOT NULL
+  , sql                 text      NOT NULL -- Likely to be toasted, so might as well stick it here
+  , raw_parameters      text      NOT NULL
+  , processed_parameters    text
 );
--- This can't be a CONSTRAINT due to the cast. Can't use :: syntax because it won't parse.
---CREATE UNIQUE INDEX instance__u_class_id__unique_parameters_text ON _classy.instance( class_id, CAST(unique_parameters AS text) );
---SELECT object_reference.object_group__dependency__add('_classy.instance', 'object_group_id');
+SELECT object_reference.object_group__dependency__add('_classy.instance', 'object_group_id');
 SELECT object_reference.object__dependency__add('_classy.instance', 'unique_object_id');
 
 CREATE OR REPLACE FUNCTION _classy.instance__get_loose(
@@ -105,14 +105,15 @@ DECLARE
   r_class _classy.class;
   r_template record;
   r_instance _classy.instance;
-  v_unique_parameters text[];
-  v_parameters text;
-  v_unique_object_id int;
+  r_instance2 _classy.instance;
 
-  sql text;
+  v_parameters text;
+  a_unique_parameters text[3];
+
 BEGIN
 -- Note that class definitions might actually be stored in multiple tables
 r_class := _classy.class__get(class_name, class_version);
+r_instance.class_id = r_class.class_id;
 
 -- TODO: Add formal support for this in trunklet
 SELECT INTO STRICT r_template
@@ -125,11 +126,13 @@ SELECT INTO STRICT r_template
  * We may need to pre-process our parameters. NOTE: This needs to happen BEFORE
  * we get our unique identifier
  */
+r_instance.raw_parameters := parameters;
 IF r_class.preprocess_template_id IS NOT NULL THEN
   v_parameters := trunklet.execute_into(
     r_class.preprocess_template_id
     , parameters
   );
+  r_instance.processed_parameters := v_parameters;
 ELSE
   v_parameters := parameters;
 END IF;
@@ -142,19 +145,19 @@ END IF;
  * that, we should identify one of those objects as being the 'face' of a
  * class. Maybe a schema, maybe a table, maybe a function.
  */
-v_unique_parameters := trunklet.execute_text(
+a_unique_parameters := trunklet.execute_text(
   r_class.unique_identifier_template_id
   , v_parameters
 );
-IF array_dims(v_unique_parameters) <> '[1:3]' THEN
+IF array_dims(a_unique_parameters) <> '[1:3]' THEN
   RAISE 'unique parameter template must return a 1 dimension array with 3 elements'
-    USING DETAIL = format( 'template returned %L', v_unique_parameters )
+    USING DETAIL = format( 'template returned %L', a_unique_parameters )
   ;
 END IF;
-v_unique_object_id := object_reference.object__getsert(
-  v_unique_parameters[1]
-  , v_unique_parameters[2]
-  , v_unique_parameters[3]
+r_instance.unique_object_id := object_reference.object__getsert(
+  a_unique_parameters[1]
+  , a_unique_parameters[2]
+  , a_unique_parameters[3]
   , loose := true -- Don't want this to throw an error if the object doesn't exist
 );
 
@@ -162,42 +165,58 @@ v_unique_object_id := object_reference.object__getsert(
  * See if we're already instantiated. We don't bother with race condition
  * because our insert at the bottom will eventually fail if nothing else.
  */
-r_instance := _classy.instance__get_loose( r_class.class_id, v_unique_object_id );
-IF NOT r_instance IS NULL THEN -- Remember that record IS NOT NULL is only true if ALL fields are not null
+r_instance2 := _classy.instance__get_loose( r_class.class_id, r_instance.unique_object_id );
+IF NOT r_instance2 IS NULL THEN -- Remember that record IS NOT NULL is only true if ALL fields are not null
   RAISE DEBUG 'r_instance = %', r_instance;
   RAISE 'instance of % already created', class_name
-    USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
+    USING DETAIL = 'with unique parameters ' || a_unique_parameters::text
   ;
 END IF;
 
-  sql := trunklet.process(
+  /*
+   * Create object_reference group for this instance.
+   */
+  r_instance.instance_id := cat_tools.sequence__next('_classy.instance', 'instance_id');
+  r_instance.object_group_id := object_reference.object_group__create(
+    format(
+      'classy: class %s (id %s), instance_id %s (unique parameters %s)'
+      , r_class.class_name
+      , r_class.class_id
+      , r_instance.instance_id
+      , a_unique_parameters
+    )
+  );
+
+  r_instance.sql := trunklet.process(
     r_template.template_name
     , r_template.template_version
     , v_parameters
   );
-  RAISE DEBUG E'executing sql: \n%', sql;
-  EXECUTE sql;
+  RAISE DEBUG E'executing sql: \n%', r_instance.sql;
+
+  -- Keep the capture as close as possible to the actual creation
+  PERFORM object_reference.capture__start(r_instance.object_group_id);
+  EXECUTE r_instance.sql;
+  PERFORM object_reference.capture__stop(r_instance.object_group_id);
 
   -- unique object better exist by now
-  v_unique_object_id := object_reference.object__getsert(
-    v_unique_parameters[1]
-    , v_unique_parameters[2]
-    , v_unique_parameters[3]
+  r_instance.unique_object_id := object_reference.object__getsert(
+    a_unique_parameters[1]
+    , a_unique_parameters[2]
+    , a_unique_parameters[3]
     , loose := true -- Don't want this to throw an error if the object doesn't exist
   );
 
   DECLARE
     con_name text;
   BEGIN
-    INSERT INTO _classy.instance(class_id, unique_object_id, parameters)
-      VALUES( r_class.class_id, v_unique_object_id, v_parameters )
-    ;
+    INSERT INTO _classy.instance VALUES( r_instance.* );
   EXCEPTION
     WHEN unique_violation THEN
       GET STACKED DIAGNOSTICS con_name = CONSTRAINT_NAME;
       IF con_name = 'instance__u_class_id__unique_parameters_text' THEN
         RAISE 'instance of "%" already created', class_name
-          USING DETAIL = 'with unique parameters ' || v_unique_parameters::text
+          USING DETAIL = 'with unique parameters ' || a_unique_parameters::text
         ;
       ELSE
         RAISE;

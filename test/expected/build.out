@@ -21,6 +21,11 @@ INSTALL
  
 (1 row)
 
+ object_group__dependency__add 
+-------------------------------
+ 
+(1 row)
+
  object__dependency__add 
 -------------------------
  
