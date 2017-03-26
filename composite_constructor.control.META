@@ -1,0 +1,3 @@
+comment = '@abstract@'
+default_version = '@version@'
+requires = 'classy, trunklet-format'
