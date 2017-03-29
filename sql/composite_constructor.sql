@@ -1,23 +1,10 @@
-INSERT INTO _classy._class(
-    class_name
-    , class_version
-    , unique_identifier_template_id
-    , creation_template_id
-    , preprocess_template_id
-  ) VALUES(
-    'composite_constructor'
-    , 1
+SELECT classy.class__create(
+  'composite_constructor'
+  , 'format'
 
-    , trunklet.template__add(
-      'format'
-      , 'pg_classy: uniqueness template for "composite_constructor"'
-      , $$SELECT array[ 'type', %composite_fqn%L, NULL ]$$
-    )
+  , unique_identifier_template => $$SELECT array[ 'type', %composite_fqn%L, NULL ]$$
 
-    , trunklet.template__add(
-      'format'
-      , 'pg_classy: creation template for "composite_constructor"'
-      , 
+  , creation_template =>
 $template$
 CREATE OR REPLACE FUNCTION %composite_fqn%s(
 %arguments with defaults%s
@@ -29,12 +16,8 @@ COMMENT ON FUNCTION %composite_fqn%s(
 %arguments%s
 ) IS %comment_string%L;
 $template$
-    )
 
-    , trunklet.template__add(
-      'format'
-      , 'pg_classy: pre-processing template for "composite_constructor"'
-      ,
+  , preprocess_template =>
 $template$
 WITH atts AS (
   SELECT quote_ident(attname) AS att_name
@@ -79,8 +62,6 @@ SELECT row_to_json(final_output, true) FROM (
 ) final_output
 ;
 $template$
-    )
-  )
-;
+);
 
 -- vi: expandtab ts=2 sw=2

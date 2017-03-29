@@ -49,6 +49,22 @@ CREATE OR REPLACE FUNCTION classy.add(
   class_name text
   , ...
 */
+CREATE OR REPLACE FUNCTION _classy.class__get_loose(
+  class_name text
+  , class_version int DEFAULT NULL
+) RETURNS _classy.class LANGUAGE sql AS $body$
+SELECT *
+  FROM _classy._class c
+  WHERE c.class_name = class__get_loose.class_name
+    AND c.class_version = coalesce(
+        class__get_loose.class_version
+        , ( SELECT max(c2.class_version)
+              FROM _classy._class c2
+              WHERE c2.class_name = class__get_loose.class_name
+          )
+      )
+$body$;
+
 CREATE OR REPLACE FUNCTION _classy.class__get(
   class_name text
   , class_version int DEFAULT NULL
@@ -59,11 +75,7 @@ BEGIN
   -- Return an error if we don't get a record
   SELECT INTO STRICT r_class
       *
-    FROM _classy._class c
-    WHERE c.class_name = class__get.class_name
-      AND c.class_version = coalesce( class__get.class_version
-          , ( SELECT max(c2.class_version) FROM _classy._class c2 WHERE c2.class_name = class__get.class_name )
-        )
+    FROM _classy.class__get_loose(class_name, class_version)
   ;
 
   RETURN r_class;
@@ -223,6 +235,105 @@ END IF;
       END IF;
   END;
 END
+$body$;
+
+CREATE OR REPLACE FUNCTION _classy.class__add(
+  class_name text
+  , template_language text
+  , unique_identifier_template text
+  , creation_template text
+  , upgrade_template text DEFAULT NULL
+  , preprocess_template text DEFAULT NULL
+) RETURNS int LANGUAGE plpgsql AS $body$
+DECLARE
+  c_version CONSTANT int := CASE
+    WHEN upgrade_template IS NULL THEN 1
+    -- Will throw an error if class doesn't exist, which is what we want
+    ELSE (_classy.class__get(class_name)).class_version
+  END;
+
+  v_class_id int;
+BEGIN
+  INSERT INTO _classy._class( class_name, class_version
+    , unique_identifier_template_id
+    , creation_template_id
+    , upgrade_template_id
+    , preprocess_template_id
+  ) VALUES (
+    class_name, c_version
+
+    , trunklet.template__add(
+      template_language
+      , format('pg_classy: unique identifier template for "%s"', class_name)
+      , c_version
+      , unique_identifier_template
+    )
+    
+    , trunklet.template__add(
+      template_language
+      , format('pg_classy: creation template for "%s"', class_name)
+      , c_version
+      , creation_template
+    )
+    
+    , CASE WHEN upgrade_template IS NOT NULL THEN
+      trunklet.template__add(
+        template_language
+        , format('pg_classy: upgrade template for "%s"', class_name)
+        , c_version
+        , upgrade_template
+      )
+    END
+    
+    , CASE WHEN preprocess_template IS NOT NULL THEN
+      trunklet.template__add(
+        template_language
+        , format('pg_classy: pre-process template for "%s"', class_name)
+        , c_version
+        , preprocess_template
+      )
+    END
+  )
+    RETURNING class_id INTO STRICT v_class_id
+  ;
+    
+  RETURN v_class_id;
+END
+$body$;
+
+CREATE OR REPLACE FUNCTION classy.class__create(
+  class_name text
+  , template_language text
+  , unique_identifier_template text
+  , creation_template text
+  , preprocess_template text DEFAULT NULL
+) RETURNS int LANGUAGE sql SECURITY DEFINER AS $body$
+SELECT _classy.class__add(
+  class_name
+  , template_language
+  , unique_identifier_template
+  , creation_template
+  , NULL
+  , preprocess_template
+)
+$body$;
+
+CREATE OR REPLACE FUNCTION classy.class__upgrade(
+  class_name text
+  , template_language text
+  , unique_identifier_template text
+  , creation_template text
+  , upgrade_template text
+  , preprocess_template text DEFAULT NULL
+) RETURNS int LANGUAGE sql SECURITY DEFINER AS $body$
+SELECT _classy.class__add(
+  class_name
+  , template_language
+  , unique_identifier_template
+  , creation_template
+  , upgrade_template
+  , preprocess_template
+)
 $body$;
 
 -- vi: expandtab sw=2 ts=2
