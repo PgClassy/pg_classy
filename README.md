@@ -3,6 +3,8 @@ classy
 
 Classes for Postgres
 
+Please join our discussion group at https://groups.google.com/forum/?pli=1#!forum/pg_classy!
+
 See sql/composite_constructor.sql for example usage.
 
 See also https://github.com/decibel/presentations/blob/master/PgClassy.pdf
