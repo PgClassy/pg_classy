@@ -1,6 +1,6 @@
 classy
 ======
-
+ 
 Classes for Postgres
 
 See sql/composite_constructor.sql for example usage.
