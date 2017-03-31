@@ -1,9 +1,11 @@
 classy
 ======
- 
+
 Classes for Postgres
 
 See sql/composite_constructor.sql for example usage.
+
+See also https://github.com/decibel/presentations/blob/master/PgClassy.pdf
 
 
 Installation
