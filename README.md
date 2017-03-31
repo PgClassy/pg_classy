@@ -1,7 +1,13 @@
 classy
-=========
+======
 
-A long description
+Classes for Postgres
+
+See sql/composite_constructor.sql for example usage.
+
+
+Installation
+============
 
 To build it, just do this:
 
