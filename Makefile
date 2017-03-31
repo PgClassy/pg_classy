@@ -65,7 +65,7 @@ $(DESTDIR)$(datadir)/extension/trunklet-format.control:
 .PHONY: object_reference
 object_reference: $(DESTDIR)$(datadir)/extension/object_reference.control
 $(DESTDIR)$(datadir)/extension/object_reference.control:
-	pgxn install object_reference
+	pgxn install object_reference --unstable
 
 .PHONY: test_factory
 test_factory: $(DESTDIR)$(datadir)/extension/test_factory.control
