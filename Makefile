@@ -77,3 +77,4 @@ pgerror: $(DESTDIR)$(datadir)/extension/pgerror.control
 $(DESTDIR)$(datadir)/extension/pgerror.control:
 	pgxn install "pgerror>=0.2.1"
 
+
