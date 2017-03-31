@@ -55,7 +55,7 @@ install: deps
 .PHONY: trunklet
 trunklet: $(DESTDIR)$(datadir)/extension/trunklet.control
 $(DESTDIR)$(datadir)/extension/trunklet.control:
-	pgxn install 'trunklet>=0.2.0' --unstable
+	pgxn install 'trunklet>=0.2.1' --unstable
 
 .PHONY: trunklet-format
 trunklet-format: $(DESTDIR)$(datadir)/extension/trunklet-format.control
@@ -75,5 +75,5 @@ $(DESTDIR)$(datadir)/extension/test_factory.control:
 .PHONY: pgerror
 pgerror: $(DESTDIR)$(datadir)/extension/pgerror.control
 $(DESTDIR)$(datadir)/extension/pgerror.control:
-	pgxn install pgerror
+	pgxn install "pgerror>=0.2.1"
 
